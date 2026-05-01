@@ -1,65 +1,149 @@
-import Image from "next/image";
+"use client";
+
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { GitBranch, ArrowRight } from "lucide-react";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut", delay },
+  }),
+};
 
 export default function Home() {
+  const router = useRouter();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="relative h-screen overflow-hidden flex items-center justify-center">
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
+
+      {/* Subtle grid overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.035] dark:opacity-[0.07]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }}
+      />
+
+      {/* Radial purple glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 55% at 50% 50%, rgba(124, 58, 237, 0.1), transparent 70%)",
+        }}
+      />
+
+      {/* Main content */}
+      <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-xl mx-auto gap-7">
+        {/* Logo badge */}
+        <motion.div
+          custom={0}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+        >
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl select-none shadow-xl"
+            style={{
+              background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
+              boxShadow: "0 8px 32px rgba(124, 58, 237, 0.35)",
+            }}
+          >
+            S
+          </div>
+        </motion.div>
+
+        {/* Title + subtitle */}
+        <motion.div
+          custom={0.1}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="space-y-3"
+        >
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight">
+            Synapse
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg sm:text-xl text-muted-foreground leading-snug">
+            A graph-based knowledge system for exploring technical concepts
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        </motion.div>
+
+        {/* Description */}
+        <motion.p
+          custom={0.2}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="text-muted-foreground max-w-md leading-relaxed text-sm sm:text-base"
+        >
+          Navigate a living map of ideas — MDX-powered nodes connected by
+          meaningful relationships, visualised as an interactive graph you can
+          explore and inspect.
+        </motion.p>
+
+        {/* CTA buttons */}
+        <motion.div
+          custom={0.3}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto"
+        >
+          <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              size="lg"
+              className="w-full sm:w-auto gap-2 px-8 text-white border-0 cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
+                boxShadow: "0 0 24px rgba(124, 58, 237, 0.4)",
+              }}
+              onClick={() => router.push("/graph")}
+            >
+              Load Graph
+              <ArrowRight className="size-4" />
+            </Button>
+          </motion.div>
+
+          <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto gap-2 px-8 cursor-pointer"
+              onClick={() =>
+                window.open(
+                  "https://github.com/Mukhopadhyay/synapse",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }
+            >
+              <GitBranch className="size-4" />
+              View on GitHub
+            </Button>
+          </motion.div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.p
+          custom={0.45}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="text-xs text-muted-foreground/50 mt-2"
+        >
+          Built with Next.js · D3 · MDX
+        </motion.p>
+      </div>
+    </main>
   );
 }
+
