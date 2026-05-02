@@ -3,25 +3,70 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTheme } from "next-themes";
 import * as d3 from "d3";
-import type { GraphNode, GraphEdge } from "@/types";
+import type { GraphNode, GraphEdge, EdgeType } from "@/types";
 import { useSynapseStore } from "@/store";
+import { theme as t } from "@/lib/theme";
 
 interface ForceGraphProps {
     nodes: GraphNode[];
     edges: GraphEdge[];
 }
 
-const BASE_WIDTH = 150;
-const BASE_HEIGHT = 64;
-const CORNER_RADIUS = 12;
-const SCALE_FACTOR = 10;
-const MAX_EXTRA_W = 60;
-const MAX_EXTRA_H = 20;
+// ── Importance thresholds ─────────────────────────────────────────────────────
+const HIGH_THRESHOLD = 4;
+const MEDIUM_THRESHOLD = 2;
 
-function getNodeDims(degree: number) {
-    const w = BASE_WIDTH + Math.min(degree * SCALE_FACTOR, MAX_EXTRA_W);
-    const h = BASE_HEIGHT + Math.min(degree * SCALE_FACTOR * 0.4, MAX_EXTRA_H);
-    return { w, h };
+type Importance = "high" | "medium" | "low";
+
+function getImportance(degree: number): Importance {
+    if (degree >= HIGH_THRESHOLD) return "high";
+    if (degree >= MEDIUM_THRESHOLD) return "medium";
+    return "low";
+}
+
+// ── Node dimensions by importance ─────────────────────────────────────────────
+const CORNER_RADIUS = 12;
+
+function getNodeDims(importance: Importance) {
+    switch (importance) {
+        case "high":
+            return { w: 190, h: 84 };
+        case "medium":
+            return { w: 160, h: 68 };
+        case "low":
+            return { w: 130, h: 48 };
+    }
+}
+
+function getTitleFontSize(importance: Importance) {
+    switch (importance) {
+        case "high":
+            return "15px";
+        case "medium":
+            return "13px";
+        case "low":
+            return "11px";
+    }
+}
+
+// ── Edge style helpers ────────────────────────────────────────────────────────
+function edgeStrokeWidth(type: EdgeType): number {
+    switch (type) {
+        case "depends":
+            return 2;
+        case "weak":
+            return 1;
+        default:
+            return 1.5;
+    }
+}
+
+function edgeDashArray(type: EdgeType): string {
+    return type === "depends" ? "6,4" : "none";
+}
+
+function edgeOpacity(type: EdgeType): number {
+    return type === "weak" ? 0.4 : 1;
 }
 
 export function ForceGraph({ nodes, edges }: ForceGraphProps) {
@@ -49,16 +94,33 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             nodeBorder: isDark ? "rgba(63,63,70,0.8)" : "rgba(200,200,210,0.9)",
             nodeText: isDark ? "#f4f4f5" : "#18181b",
             nodeSubText: isDark ? "rgba(161,161,170,0.8)" : "rgba(90,90,100,0.8)",
-            tagBg: isDark ? "rgba(109,40,217,0.3)" : "rgba(139,92,246,0.12)",
-            tagBorder: isDark ? "rgba(139,92,246,0.4)" : "rgba(139,92,246,0.4)",
-            tagText: isDark ? "#a78bfa" : "#6d28d9",
-            edgeUni: isDark ? "rgba(139,92,246,0.35)" : "rgba(109,40,217,0.3)",
-            edgeBi: isDark ? "rgba(139,92,246,0.2)" : "rgba(109,40,217,0.18)",
-            edgeHover: isDark ? "rgba(167,139,250,0.9)" : "rgba(109,40,217,0.9)",
-            arrowFill: isDark ? "rgba(167,139,250,0.8)" : "rgba(109,40,217,0.7)",
-            labelText: isDark ? "#a78bfa" : "#6d28d9",
+            tagBg: isDark ? `${t.accent}4d` : `${t.accent}1f`,
+            tagBorder: isDark ? `${t.accentBright}66` : `${t.accentBright}66`,
+            tagText: isDark ? t.accentLight : t.accentDark,
+            edgeDirected: isDark ? `${t.accentBright}59` : `${t.accent}4d`,
+            edgeBi: isDark ? `${t.accentBright}4d` : `${t.accent}3d`,
+            edgeDepends: isDark ? "rgba(161,161,170,0.55)" : "rgba(120,120,140,0.50)",
+            edgeWeak: isDark ? "rgba(161,161,170,0.25)" : "rgba(120,120,140,0.20)",
+            edgeHover: isDark ? `${t.accentLight}e6` : `${t.accent}e6`,
+            arrowFill: isDark ? `${t.accentLight}cc` : `${t.accent}b3`,
+            arrowFillBi: isDark ? `${t.accentLight}99` : `${t.accent}80`,
+            labelText: isDark ? t.accentLight : t.accentDark,
             labelBg: isDark ? "rgba(24,24,27,0.85)" : "rgba(255,255,255,0.9)",
+            glowHigh: isDark ? `${t.accentBright}33` : `${t.accent}1a`,
         };
+
+        function edgeColor(type: EdgeType) {
+            switch (type) {
+                case "bidirectional":
+                    return colors.edgeBi;
+                case "depends":
+                    return colors.edgeDepends;
+                case "weak":
+                    return colors.edgeWeak;
+                default:
+                    return colors.edgeDirected;
+            }
+        }
 
         const svg = d3.select(svgRef.current);
         svg.selectAll("*").remove();
@@ -88,7 +150,19 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
         feMerge.append("feMergeNode").attr("in", "coloredBlur");
         feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
-        // Arrow marker for unidirectional edges
+        // High-importance shadow filter
+        const shadowFilter = defs
+            .append("filter")
+            .attr("id", "node-shadow")
+            .attr("x", "-30%").attr("y", "-30%")
+            .attr("width", "160%").attr("height", "160%");
+        shadowFilter.append("feDropShadow")
+            .attr("dx", "0").attr("dy", "2")
+            .attr("stdDeviation", "4")
+            .attr("flood-color", colors.glowHigh)
+            .attr("flood-opacity", "0.8");
+
+        // Arrow marker for directed edges (end)
         defs.append("marker")
             .attr("id", "arrowhead")
             .attr("markerWidth", "8")
@@ -100,7 +174,19 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             .attr("points", "0 0, 8 3, 0 6")
             .attr("fill", colors.arrowFill);
 
-        // Hover arrow marker (brighter)
+        // Arrow marker for bidirectional edges (start — reversed)
+        defs.append("marker")
+            .attr("id", "arrowhead-start")
+            .attr("markerWidth", "8")
+            .attr("markerHeight", "6")
+            .attr("refX", "1")
+            .attr("refY", "3")
+            .attr("orient", "auto-start-reverse")
+            .append("polygon")
+            .attr("points", "8 0, 0 3, 8 6")
+            .attr("fill", colors.arrowFillBi);
+
+        // Hover arrow marker (brighter) — end
         defs.append("marker")
             .attr("id", "arrowhead-hover")
             .attr("markerWidth", "8")
@@ -112,6 +198,18 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             .attr("points", "0 0, 8 3, 0 6")
             .attr("fill", colors.edgeHover);
 
+        // Hover arrow marker (brighter) — start
+        defs.append("marker")
+            .attr("id", "arrowhead-start-hover")
+            .attr("markerWidth", "8")
+            .attr("markerHeight", "6")
+            .attr("refX", "1")
+            .attr("refY", "3")
+            .attr("orient", "auto-start-reverse")
+            .append("polygon")
+            .attr("points", "8 0, 0 3, 8 6")
+            .attr("fill", colors.edgeHover);
+
         // ── Clone data ───────────────────────────────────────────────────────
         const simNodes: GraphNode[] = nodes.map((n) => ({ ...n }));
         const idToSimNode = new Map(simNodes.map((n) => [n.id, n]));
@@ -120,17 +218,33 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             .map((e) => ({
                 source: idToSimNode.get(e.source as string) ?? e.source,
                 target: idToSimNode.get(e.target as string) ?? e.target,
-                direction: e.direction,
+                type: e.type,
             }))
             .filter((e) => e.source && e.target);
 
-        // ── Degree map ───────────────────────────────────────────────────────
+        // ── Degree map & importance ──────────────────────────────────────────
         const degreeMap = new Map<string, number>();
         simEdges.forEach((e) => {
             const s = ((e.source as GraphNode).id ?? e.source) as string;
-            const t = ((e.target as GraphNode).id ?? e.target) as string;
+            const t2 = ((e.target as GraphNode).id ?? e.target) as string;
             degreeMap.set(s, (degreeMap.get(s) ?? 0) + 1);
-            degreeMap.set(t, (degreeMap.get(t) ?? 0) + 1);
+            degreeMap.set(t2, (degreeMap.get(t2) ?? 0) + 1);
+        });
+
+        const importanceMap = new Map<string, Importance>();
+        simNodes.forEach((n) => {
+            importanceMap.set(n.id, getImportance(degreeMap.get(n.id) ?? 0));
+        });
+
+        // ── Edge set for quick neighbor lookup ───────────────────────────────
+        const neighborEdges = new Map<string, Set<number>>();
+        simEdges.forEach((e, i) => {
+            const sId = ((e.source as GraphNode).id ?? e.source) as string;
+            const tId = ((e.target as GraphNode).id ?? e.target) as string;
+            if (!neighborEdges.has(sId)) neighborEdges.set(sId, new Set());
+            if (!neighborEdges.has(tId)) neighborEdges.set(tId, new Set());
+            neighborEdges.get(sId)!.add(i);
+            neighborEdges.get(tId)!.add(i);
         });
 
         // ── Simulation ───────────────────────────────────────────────────────
@@ -150,11 +264,20 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             .data(simEdges)
             .enter()
             .append("line")
-            .attr("stroke", (d) => d.direction === "bidirectional" ? colors.edgeBi : colors.edgeUni)
-            .attr("stroke-width", 1.5)
-            .attr("stroke-dasharray", (d) => d.direction === "bidirectional" ? "5,4" : "none")
-            .attr("marker-end", (d) => d.direction !== "bidirectional" ? "url(#arrowhead)" : null)
-            .style("cursor", "pointer");
+            .attr("stroke", (d) => edgeColor(d.type))
+            .attr("stroke-width", (d) => edgeStrokeWidth(d.type))
+            .attr("stroke-dasharray", (d) => edgeDashArray(d.type))
+            .attr("opacity", (d) => edgeOpacity(d.type))
+            .attr("marker-end", (d) => {
+                if (d.type === "depends") return null;
+                return "url(#arrowhead)";
+            })
+            .attr("marker-start", (d) => {
+                if (d.type === "bidirectional") return "url(#arrowhead-start)";
+                return null;
+            })
+            .style("cursor", "pointer")
+            .style("transition", "stroke 0.2s, stroke-width 0.2s, opacity 0.2s");
 
         // ── Edge hover labels ────────────────────────────────────────────────
         const labelGroup = container.append("g").attr("class", "edge-labels");
@@ -183,23 +306,27 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             .attr("fill", colors.labelText)
             .attr("pointer-events", "none")
             .style("opacity", 0)
-            .text((d) => d.direction ?? "unidirectional");
+            .text((d) => d.type);
 
         link
             .on("mouseover", function (_, d) {
                 d3.select(this)
                     .attr("stroke", colors.edgeHover)
-                    .attr("stroke-width", 2.5)
-                    .attr("marker-end", d.direction !== "bidirectional" ? "url(#arrowhead-hover)" : null);
+                    .attr("stroke-width", edgeStrokeWidth(d.type) + 1)
+                    .attr("opacity", 1)
+                    .attr("marker-end", d.type !== "depends" ? "url(#arrowhead-hover)" : null)
+                    .attr("marker-start", d.type === "bidirectional" ? "url(#arrowhead-start-hover)" : null);
                 const i = simEdges.indexOf(d);
                 edgeLabelBg.filter((_, j) => j === i).style("opacity", 1);
                 edgeLabelText.filter((_, j) => j === i).style("opacity", 1);
             })
             .on("mouseout", function (_, d) {
                 d3.select(this)
-                    .attr("stroke", d.direction === "bidirectional" ? colors.edgeBi : colors.edgeUni)
-                    .attr("stroke-width", 1.5)
-                    .attr("marker-end", d.direction !== "bidirectional" ? "url(#arrowhead)" : null);
+                    .attr("stroke", edgeColor(d.type))
+                    .attr("stroke-width", edgeStrokeWidth(d.type))
+                    .attr("opacity", edgeOpacity(d.type))
+                    .attr("marker-end", d.type !== "depends" ? "url(#arrowhead)" : null)
+                    .attr("marker-start", d.type === "bidirectional" ? "url(#arrowhead-start)" : null);
                 const i = simEdges.indexOf(d);
                 edgeLabelBg.filter((_, j) => j === i).style("opacity", 0);
                 edgeLabelText.filter((_, j) => j === i).style("opacity", 0);
@@ -229,64 +356,113 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             )
             .on("click", (_event, d) => handleNodeClick(d))
             .on("mouseover", function (_, d) {
-                const { w, h } = getNodeDims(degreeMap.get(d.id) ?? 0);
+                const imp = importanceMap.get(d.id) ?? "low";
+                const { w, h } = getNodeDims(imp);
+
+                // Scale up the hovered node
                 d3.select(this).select("rect")
                     .attr("filter", "url(#node-glow)")
-                    .attr("stroke", isDark ? "#8b5cf6" : "#6d28d9")
+                    .attr("stroke", isDark ? t.accentBright : t.accent)
                     .attr("stroke-width", 2)
                     .attr("x", -w / 2 - 2).attr("y", -h / 2 - 2)
                     .attr("width", w + 4).attr("height", h + 4);
+
+                // Highlight connected edges, dim others
+                const connectedEdgeIndices = neighborEdges.get(d.id) ?? new Set();
+                link.each(function (_, i) {
+                    if (connectedEdgeIndices.has(i)) {
+                        d3.select(this)
+                            .attr("stroke", colors.edgeHover)
+                            .attr("stroke-width", 2.5)
+                            .attr("opacity", 1);
+                    } else {
+                        d3.select(this).attr("opacity", 0.15);
+                    }
+                });
             })
             .on("mouseout", function (_, d) {
                 const isSelected = selectedNode?.id === d.id;
-                const { w, h } = getNodeDims(degreeMap.get(d.id) ?? 0);
+                const imp = importanceMap.get(d.id) ?? "low";
+                const { w, h } = getNodeDims(imp);
+
                 d3.select(this).select("rect")
-                    .attr("filter", isSelected ? "url(#node-glow)" : "none")
-                    .attr("stroke", isSelected ? (isDark ? "#8b5cf6" : "#6d28d9") : colors.nodeBorder)
-                    .attr("stroke-width", isSelected ? 2.5 : 1.5)
+                    .attr("filter", isSelected ? "url(#node-glow)" : (imp === "high" ? "url(#node-shadow)" : "none"))
+                    .attr("stroke", isSelected ? (isDark ? t.accentBright : t.accent) : colors.nodeBorder)
+                    .attr("stroke-width", isSelected ? 2.5 : (imp === "high" ? 1.8 : 1.5))
                     .attr("x", -w / 2).attr("y", -h / 2)
                     .attr("width", w).attr("height", h);
+
+                // Restore edge styles
+                link.each(function (ed) {
+                    const edgeData = ed as GraphEdge;
+                    d3.select(this)
+                        .attr("stroke", edgeColor(edgeData.type))
+                        .attr("stroke-width", edgeStrokeWidth(edgeData.type))
+                        .attr("opacity", edgeOpacity(edgeData.type));
+                });
             });
 
-        // Card background (variable size based on degree)
+        // Card background (variable size based on importance)
         nodeGroup.append("rect")
-            .attr("x", (d) => -getNodeDims(degreeMap.get(d.id) ?? 0).w / 2)
-            .attr("y", (d) => -getNodeDims(degreeMap.get(d.id) ?? 0).h / 2)
-            .attr("width", (d) => getNodeDims(degreeMap.get(d.id) ?? 0).w)
-            .attr("height", (d) => getNodeDims(degreeMap.get(d.id) ?? 0).h)
+            .attr("x", (d) => -getNodeDims(importanceMap.get(d.id) ?? "low").w / 2)
+            .attr("y", (d) => -getNodeDims(importanceMap.get(d.id) ?? "low").h / 2)
+            .attr("width", (d) => getNodeDims(importanceMap.get(d.id) ?? "low").w)
+            .attr("height", (d) => getNodeDims(importanceMap.get(d.id) ?? "low").h)
             .attr("rx", CORNER_RADIUS)
             .attr("fill", colors.nodeBg)
-            .attr("stroke", colors.nodeBorder)
-            .attr("stroke-width", 1.5);
+            .attr("stroke", (d) => {
+                const imp = importanceMap.get(d.id) ?? "low";
+                if (imp === "high") return isDark ? `${t.accentBright}40` : `${t.accent}30`;
+                return colors.nodeBorder;
+            })
+            .attr("stroke-width", (d) => {
+                const imp = importanceMap.get(d.id) ?? "low";
+                return imp === "high" ? 1.8 : 1.5;
+            })
+            .attr("filter", (d) => {
+                const imp = importanceMap.get(d.id) ?? "low";
+                return imp === "high" ? "url(#node-shadow)" : "none";
+            });
 
-        // Category label
-        nodeGroup.append("text")
-            .attr("y", (d) => -getNodeDims(degreeMap.get(d.id) ?? 0).h / 2 + 14)
+        // Category label (high importance only)
+        nodeGroup
+            .filter((d) => (importanceMap.get(d.id) ?? "low") === "high")
+            .append("text")
+            .attr("y", (d) => -getNodeDims("high").h / 2 + 15)
             .attr("text-anchor", "middle")
             .attr("font-size", "9px")
             .attr("fill", colors.nodeSubText)
             .attr("font-family", "inherit")
+            .attr("letter-spacing", "0.5px")
             .text((d) => d.metadata?.type?.split(".")[0]?.toUpperCase() ?? "");
 
-        // Title
+        // Title (all nodes)
         nodeGroup.append("text")
-            .attr("y", 2)
-            .attr("text-anchor", "middle")
-            .attr("font-size", (d) => {
-                const deg = degreeMap.get(d.id) ?? 0;
-                return deg >= 4 ? "14px" : deg >= 2 ? "13px" : "12px";
+            .attr("y", (d) => {
+                const imp = importanceMap.get(d.id) ?? "low";
+                if (imp === "high") return 2;
+                if (imp === "medium") return 0;
+                return 1;
             })
-            .attr("font-weight", "600")
+            .attr("text-anchor", "middle")
+            .attr("font-size", (d) => getTitleFontSize(importanceMap.get(d.id) ?? "low"))
+            .attr("font-weight", (d) => {
+                const imp = importanceMap.get(d.id) ?? "low";
+                return imp === "high" ? "700" : imp === "medium" ? "600" : "500";
+            })
             .attr("fill", colors.nodeText)
             .attr("font-family", "inherit")
             .text((d) => d.title);
 
-        // Tags row
+        // Tags row (high and medium importance only)
         nodeGroup.each(function (d) {
+            const imp = importanceMap.get(d.id) ?? "low";
+            if (imp === "low") return; // No tags for low importance
+
             const g = d3.select(this);
-            const { h } = getNodeDims(degreeMap.get(d.id) ?? 0);
+            const { h } = getNodeDims(imp);
             const TAG_Y = h / 2 - 12;
-            const tags = d.tags?.slice(0, 2) ?? [];
+            const tags = d.tags?.slice(0, imp === "high" ? 3 : 2) ?? [];
             const tagWidth = 42;
             const gap = 5;
             const totalWidth = tags.length * tagWidth + (tags.length - 1) * gap;
@@ -316,11 +492,11 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
                     const tx = (d.target as GraphNode).x ?? 0;
                     const sy = (d.source as GraphNode).y ?? 0;
                     const ty = (d.target as GraphNode).y ?? 0;
-                    if (d.direction === "bidirectional") return tx;
+                    if (d.type === "depends") return tx; // no offset needed — no arrowhead
                     const dx = tx - sx, dy = ty - sy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist === 0) return tx;
-                    const { w } = getNodeDims(degreeMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? 0);
+                    const { w } = getNodeDims(importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low");
                     return tx - (dx / dist) * (w / 2 + 6);
                 })
                 .attr("y2", (d) => {
@@ -328,11 +504,11 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
                     const ty = (d.target as GraphNode).y ?? 0;
                     const sx = (d.source as GraphNode).x ?? 0;
                     const tx = (d.target as GraphNode).x ?? 0;
-                    if (d.direction === "bidirectional") return ty;
+                    if (d.type === "depends") return ty;
                     const dx = tx - sx, dy = ty - sy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist === 0) return ty;
-                    const { h } = getNodeDims(degreeMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? 0);
+                    const { h } = getNodeDims(importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low");
                     return ty - (dy / dist) * (h / 2 + 6);
                 });
 
@@ -368,9 +544,9 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
 
             g.select("rect")
                 .attr("stroke", isSelected
-                    ? (isDark ? "#8b5cf6" : "#6d28d9")
+                    ? (isDark ? t.accentBright : t.accent)
                     : isHighlighted
-                        ? (isDark ? "rgba(139,92,246,0.7)" : "rgba(109,40,217,0.7)")
+                        ? (isDark ? `${t.accentBright}b3` : `${t.accent}b3`)
                         : (isDark ? "rgba(63,63,70,0.8)" : "rgba(200,200,210,0.9)"))
                 .attr("stroke-width", isSelected ? 2.5 : isHighlighted ? 1.8 : 1.5)
                 .attr("filter", isSelected || isHighlighted ? "url(#node-glow)" : "none");
@@ -387,4 +563,3 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
         />
     );
 }
-

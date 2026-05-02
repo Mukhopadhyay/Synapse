@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GitBranch, ArrowRight } from "lucide-react";
+import { theme as t } from "@/lib/theme";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -32,12 +33,12 @@ export default function Home() {
         }}
       />
 
-      {/* Radial purple glow */}
+      {/* Radial red glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 70% 55% at 50% 50%, rgba(124, 58, 237, 0.1), transparent 70%)",
+            `radial-gradient(ellipse 70% 55% at 50% 50%, ${t.accent}1a, transparent 70%)`,
         }}
       />
 
@@ -53,8 +54,8 @@ export default function Home() {
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-2xl select-none shadow-xl"
             style={{
-              background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-              boxShadow: "0 8px 32px rgba(124, 58, 237, 0.35)",
+              background: `linear-gradient(135deg, ${t.accent} 0%, ${t.accentBright} 100%)`,
+              boxShadow: `0 8px 32px ${t.accent}59`,
             }}
           >
             S
@@ -103,8 +104,8 @@ export default function Home() {
               size="lg"
               className="w-full sm:w-auto gap-2 px-8 text-white border-0 cursor-pointer"
               style={{
-                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
-                boxShadow: "0 0 24px rgba(124, 58, 237, 0.4)",
+                background: `linear-gradient(135deg, ${t.accent} 0%, ${t.accentBright} 100%)`,
+                boxShadow: `0 0 24px ${t.accent}66`,
               }}
               onClick={() => router.push("/graph")}
             >
@@ -146,4 +147,3 @@ export default function Home() {
     </main>
   );
 }
-

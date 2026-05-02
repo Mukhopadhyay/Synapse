@@ -10,251 +10,160 @@ import { Badge } from "@/components/ui/badge";
 
 export function NodeInspector() {
     const {
-        selectedNode,
-        setSelectedNode,
-        nodes,
-        togglePinNode,
-        pinnedNodes,
-        isInspectorFullscreen,
-        setInspectorFullscreen,
+        selectedNode, setSelectedNode, togglePinNode,
+        pinnedNodes, isInspectorFullscreen, setInspectorFullscreen,
     } = useSynapseStore();
 
     const isPinned = selectedNode ? pinnedNodes.includes(selectedNode.id) : false;
-
-    const linkedNodes = selectedNode
-        ? (selectedNode.connections ?? [])
-            .map((id) => nodes.find((n) => n.id === id))
-            .filter(Boolean)
-        : [];
 
     const panelWidth = "min(45vw, 480px)";
 
     return (
         <AnimatePresence>
             {selectedNode && (
-                <>
-                    {/* Mobile: full-screen modal overlay */}
-                    <motion.div
-                        key="inspector-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/60 z-20 md:hidden"
-                        onClick={() => setSelectedNode(null)}
-                    />
-
-                    {/* Fullscreen backdrop */}
-                    {isInspectorFullscreen && (
-                        <motion.div
-                            key="inspector-fullscreen-backdrop"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/70 z-40 hidden md:block"
-                            onClick={() => setInspectorFullscreen(false)}
-                        />
-                    )}
-
-                    <motion.aside
-                        key="inspector"
-                        initial={{ x: "100%", opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: "100%", opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        style={isInspectorFullscreen ? undefined : { width: panelWidth }}
-                        className={`bg-white dark:bg-[#111113] border-l border-gray-200 dark:border-white/[0.07] flex flex-col overflow-hidden ${isInspectorFullscreen
-                            ? "fixed inset-0 z-50"
-                            : "absolute right-0 top-0 h-full z-30 md:w-auto w-full"
-                            }`}
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.07] shrink-0">
-                            <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
-                                Node Inspector
-                            </span>
-                            <div className="flex gap-1">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setInspectorFullscreen(!isInspectorFullscreen)}
-                                    className="size-6 text-zinc-500 hover:text-zinc-200"
-                                    title={isInspectorFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                                >
-                                    {isInspectorFullscreen ? (
-                                        <Minimize2 className="size-3.5" />
-                                    ) : (
-                                        <Maximize2 className="size-3.5" />
-                                    )}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => togglePinNode(selectedNode.id)}
-                                    className={`size-6 ${isPinned ? "text-violet-400" : "text-zinc-500"}`}
-                                    title={isPinned ? "Unpin" : "Pin"}
-                                >
-                                    <Pin className="size-3.5" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setSelectedNode(null)}
-                                    className="size-6 text-zinc-500 hover:text-zinc-200"
-                                >
-                                    <X className="size-3.5" />
-                                </Button>
-                            </div>
+                <motion.aside key="inspector"
+                    initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    style={{ width: panelWidth }}
+                    className="bg-white dark:bg-[#111113] border-l border-gray-200 dark:border-white/[0.07] flex flex-col overflow-hidden absolute right-0 top-0 h-full z-30 hidden md:flex">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.07] shrink-0">
+                        <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Node Inspector</span>
+                        <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setInspectorFullscreen(!isInspectorFullscreen)}
+                                className="size-6 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                                title={isInspectorFullscreen ? "Exit fullscreen" : "Fullscreen"}>
+                                {isInspectorFullscreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => togglePinNode(selectedNode.id)}
+                                className={`size-6 ${isPinned ? "text-accent-theme-light" : "text-zinc-500"}`}
+                                title={isPinned ? "Unpin" : "Pin"}>
+                                <Pin className="size-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)}
+                                className="size-6 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"><X className="size-3.5" /></Button>
                         </div>
+                    </div>
 
-                        <ScrollArea className="flex-1 min-h-0">
-                            {/* Hero gradient */}
-                            <div className="w-full h-[140px] bg-gradient-to-br from-violet-900/40 via-indigo-900/30 to-zinc-900/80 flex items-center justify-center border-b border-white/[0.07] shrink-0">
-                                <div className="size-16 rounded-2xl bg-gradient-to-br from-violet-600/30 to-indigo-600/20 border border-violet-500/30 flex items-center justify-center">
-                                    <span className="text-2xl">🧠</span>
-                                </div>
-                            </div>
-
-                            <div className="p-4 space-y-4">
-                                {/* Title + description */}
-                                <div>
-                                    <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100 leading-snug">
-                                        {selectedNode.title}
-                                    </h2>
-                                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                        {selectedNode.description}
-                                    </p>
-                                </div>
-
-                                {/* Tags */}
-                                {selectedNode.tags?.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {selectedNode.tags.map((tag) => (
-                                            <Badge
-                                                key={tag}
-                                                className="px-2 py-0.5 text-[10px] bg-violet-600/20 text-violet-300 border border-violet-600/30 rounded-full"
-                                            >
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
-
-                                {/* MDX Content */}
-                                {selectedNode.content && (
-                                    <>
-                                        <div>
-                                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-3">
-                                                Content
-                                            </h3>
-                                            <MarkdownContent content={selectedNode.content} />
-                                        </div>
-                                    </>
-                                )}
-
-                                <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
-
-
-                                {/* Attributes */}
-                                <div>
-                                    <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-2">
-                                        Attributes
-                                    </h3>
-                                    <div className="space-y-2">
-                                        <AttributeRow
-                                            label="Type"
-                                            value={selectedNode.metadata?.type ?? "—"}
-                                        />
-                                        <AttributeRow
-                                            label="Last Modified"
-                                            value={formatDate(selectedNode.updatedAt)}
-                                        />
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-zinc-500">Difficulty</span>
-                                            <DifficultyBars level={typeof selectedNode.difficulty === "number" ? selectedNode.difficulty : 0} />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs text-zinc-500">Complexity</span>
-                                            <DifficultyBars level={selectedNode.metadata?.complexity ?? 0} />
-                                        </div>
-                                        {typeof selectedNode.direction === "object" && selectedNode.direction?.type && (
-                                            <AttributeRow
-                                                label="Direction"
-                                                value={selectedNode.direction.type}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Contributors */}
-                                {selectedNode.contributors && selectedNode.contributors.length > 0 && (
-                                    <>
-                                        <Separator className="bg-white/[0.06]" />
-                                        <div>
-                                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-600 mb-2">
-                                                Contributors
-                                            </h3>
-                                            <div className="space-y-1">
-                                                {selectedNode.contributors.map((c) => (
-                                                    <div key={c.github} className="flex items-center gap-2">
-                                                        <span className="text-xs text-zinc-300">{c.name}</span>
-                                                        <span className="text-[10px] text-zinc-600">@{c.github}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Linked entities */}
-                                {linkedNodes.length > 0 && (
-                                    <>
-                                        <Separator className="bg-white/[0.06]" />
-                                        <div>
-                                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-600 mb-2">
-                                                Linked Entities
-                                            </h3>
-                                            <div className="space-y-1.5">
-                                                {linkedNodes.map((n) => {
-                                                    if (!n) return null;
-                                                    const isCode =
-                                                        n.metadata?.type?.includes("component") ||
-                                                        n.metadata?.type?.includes("architecture");
-                                                    return (
-                                                        <motion.button
-                                                            key={n.id}
-                                                            whileHover={{ x: 2 }}
-                                                            onClick={() => setSelectedNode(n)}
-                                                            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:border-violet-600/30 hover:bg-violet-600/10 transition-colors text-left group"
-                                                        >
-                                                            <span className="text-sm">
-                                                                {isCode ? "⌥" : "📖"}
-                                                            </span>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-xs font-medium text-zinc-300 group-hover:text-violet-300 truncate">
-                                                                    {n.title}
-                                                                </p>
-                                                                <p className="text-[10px] text-zinc-600">
-                                                                    {n.metadata?.type?.split(".")[1] ?? "entity"}
-                                                                </p>
-                                                            </div>
-                                                            <ExternalLink className="size-3 text-zinc-600 group-hover:text-violet-400 shrink-0" />
-                                                        </motion.button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-
-                            </div>
-                        </ScrollArea>
-                    </motion.aside>
-                </>
+                    <ScrollArea className="flex-1 min-h-0">
+                        <NodeInspectorContent />
+                    </ScrollArea>
+                </motion.aside>
             )}
         </AnimatePresence>
+    );
+}
+
+/**
+ * Shared content displayed in both the side panel (NodeInspector) and the
+ * modal dialog (NodeDialog). Extracts the selected node from the store.
+ */
+export function NodeInspectorContent() {
+    const { selectedNode, setSelectedNode, nodes } = useSynapseStore();
+
+    if (!selectedNode) return null;
+
+    const linkedNodes = (selectedNode.connections ?? [])
+        .map((id) => nodes.find((n) => n.id === id))
+        .filter(Boolean);
+
+    return (
+        <>
+            <div className="w-full h-[140px] bg-gradient-to-br from-accent-theme-dark/40 via-accent-theme/30 to-zinc-900/80 flex items-center justify-center border-b border-gray-200 dark:border-white/[0.07] shrink-0">
+                <div className="size-16 rounded-2xl bg-gradient-to-br from-accent-theme/30 to-accent-theme-dark/20 border border-accent-theme-bright/30 flex items-center justify-center">
+                    <span className="text-2xl">🧠</span>
+                </div>
+            </div>
+
+            <div className="p-4 space-y-4">
+                <div>
+                    <h2 className="text-base font-semibold text-zinc-800 dark:text-zinc-100 leading-snug">{selectedNode.title}</h2>
+                    <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{selectedNode.description}</p>
+                </div>
+
+                {selectedNode.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {selectedNode.tags.map((tag) => (
+                            <Badge key={tag} className="px-2 py-0.5 text-[10px] bg-accent-theme/20 text-accent-theme-light border border-accent-theme/30 rounded-full">{tag}</Badge>
+                        ))}
+                    </div>
+                )}
+
+                <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
+
+                {selectedNode.content && (
+                    <>
+                        <div>
+                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-3">Content</h3>
+                            <MarkdownContent content={selectedNode.content} />
+                        </div>
+                    </>
+                )}
+
+                <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
+
+                <div>
+                    <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-2">Attributes</h3>
+                    <div className="space-y-2">
+                        <AttributeRow label="Type" value={selectedNode.metadata?.type ?? "—"} />
+                        <AttributeRow label="Last Modified" value={formatDate(selectedNode.updatedAt)} />
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-zinc-500">Difficulty</span>
+                            <DifficultyBars level={typeof selectedNode.difficulty === "number" ? selectedNode.difficulty : 0} />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-zinc-500">Complexity</span>
+                            <DifficultyBars level={selectedNode.metadata?.complexity ?? 0} />
+                        </div>
+                        {typeof selectedNode.direction === "object" && selectedNode.direction?.type && (
+                            <AttributeRow label="Direction" value={selectedNode.direction.type} />
+                        )}
+                    </div>
+                </div>
+
+                {selectedNode.contributors && selectedNode.contributors.length > 0 && (
+                    <>
+                        <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
+                        <div>
+                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-2">Contributors</h3>
+                            <div className="space-y-1">
+                                {selectedNode.contributors.map((c) => (
+                                    <div key={c.github} className="flex items-center gap-2">
+                                        <span className="text-xs text-zinc-700 dark:text-zinc-300">{c.name}</span>
+                                        <span className="text-[10px] text-zinc-400 dark:text-zinc-600">@{c.github}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {linkedNodes.length > 0 && (
+                    <>
+                        <Separator className="bg-gray-200 dark:bg-white/[0.06]" />
+                        <div>
+                            <h3 className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-600 mb-2">Linked Entities</h3>
+                            <div className="space-y-1.5">
+                                {linkedNodes.map((n) => {
+                                    if (!n) return null;
+                                    const isCode = n.metadata?.type?.includes("component") || n.metadata?.type?.includes("architecture");
+                                    return (
+                                        <motion.button key={n.id} whileHover={{ x: 2 }} onClick={() => setSelectedNode(n)}
+                                            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.06] hover:border-accent-theme/30 hover:bg-accent-theme/10 transition-colors text-left group">
+                                            <span className="text-sm">{isCode ? "⌥" : "📖"}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-accent-theme dark:group-hover:text-accent-theme-light truncate">{n.title}</p>
+                                                <p className="text-[10px] text-zinc-400 dark:text-zinc-600">{n.metadata?.type?.split(".")[1] ?? "entity"}</p>
+                                            </div>
+                                            <ExternalLink className="size-3 text-zinc-400 dark:text-zinc-600 group-hover:text-accent-theme dark:group-hover:text-accent-theme-light shrink-0" />
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        </>
     );
 }
 
@@ -271,11 +180,8 @@ function DifficultyBars({ level }: { level: number }) {
     return (
         <div className="flex gap-1">
             {Array.from({ length: 5 }).map((_, i) => (
-                <span
-                    key={i}
-                    className={`h-1.5 w-4 rounded-full transition-colors ${i < level ? "bg-violet-500" : "bg-gray-200 dark:bg-zinc-700"
-                        }`}
-                />
+                <span key={i}
+                    className={`h-1.5 w-4 rounded-full transition-colors ${i < level ? "bg-accent-theme-bright" : "bg-gray-200 dark:bg-zinc-700"}`} />
             ))}
         </div>
     );
@@ -284,19 +190,12 @@ function DifficultyBars({ level }: { level: number }) {
 function formatDate(dateStr?: string): string {
     if (!dateStr) return "—";
     try {
-        return new Date(dateStr).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        });
-    } catch {
-        return dateStr;
-    }
+        return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch { return dateStr; }
 }
 
 // ── Simple Markdown renderer ──────────────────────────────────────────────────
 function parseInline(text: string): React.ReactNode[] {
-    // Non-capturing inner groups — split() won't emit undefined for unmatched branches
     const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/);
     return parts
         .filter((p): p is string => Boolean(p))
@@ -306,7 +205,7 @@ function parseInline(text: string): React.ReactNode[] {
             }
             if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
                 return (
-                    <code key={i} className="px-1 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-zinc-800 text-violet-600 dark:text-violet-300 font-mono">
+                    <code key={i} className="px-1 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-zinc-800 text-accent-theme dark:text-accent-theme-light font-mono">
                         {part.slice(1, -1)}
                     </code>
                 );
@@ -315,7 +214,7 @@ function parseInline(text: string): React.ReactNode[] {
             if (linkMatch) {
                 return (
                     <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer"
-                        className="text-violet-600 dark:text-violet-400 underline underline-offset-2 hover:opacity-80">
+                        className="text-accent-theme dark:text-accent-theme-light underline underline-offset-2 hover:opacity-80">
                         {linkMatch[1]}
                     </a>
                 );
@@ -337,7 +236,7 @@ function MarkdownContent({ content }: { content: string }) {
             <ul key={key} className="ml-3 space-y-0.5 my-1.5 list-none">
                 {listBuffer.map((item, j) => (
                     <li key={j} className="flex gap-2 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                        <span className="mt-1.5 size-1 rounded-full bg-violet-400 shrink-0" />
+                        <span className="mt-1.5 size-1 rounded-full bg-accent-theme-light shrink-0" />
                         <span>{parseInline(item)}</span>
                     </li>
                 ))}
@@ -350,37 +249,25 @@ function MarkdownContent({ content }: { content: string }) {
         const key = `line-${idx}`;
 
         if (line.startsWith("```")) {
-            if (!inCodeBlock) {
-                flushList(`list-before-${idx}`);
-                inCodeBlock = true;
-                codeLines = [];
-            } else {
+            if (!inCodeBlock) { flushList(`list-before-${idx}`); inCodeBlock = true; codeLines = []; }
+            else {
                 elements.push(
                     <pre key={key} className="rounded-lg bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-white/[0.06] p-3 overflow-x-auto my-2">
-                        <code className="text-[11px] text-zinc-700 dark:text-zinc-300 font-mono leading-relaxed">
-                            {codeLines.join("\n")}
-                        </code>
+                        <code className="text-[11px] text-zinc-700 dark:text-zinc-300 font-mono leading-relaxed">{codeLines.join("\n")}</code>
                     </pre>
                 );
-                inCodeBlock = false;
-                codeLines = [];
+                inCodeBlock = false; codeLines = [];
             }
             return;
         }
 
-        if (inCodeBlock) {
-            codeLines.push(line);
-            return;
-        }
+        if (inCodeBlock) { codeLines.push(line); return; }
 
         const isListItem = line.startsWith("- ") || line.startsWith("* ") || /^\d+\. /.test(line);
         if (isListItem) {
             const text = line.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "");
-            listBuffer.push(text);
-            return;
-        } else {
-            flushList(`list-${idx}`);
-        }
+            listBuffer.push(text); return;
+        } else { flushList(`list-${idx}`); }
 
         if (/^#{1,6} /.test(line)) {
             const level = line.match(/^#+/)![0].length;
@@ -392,15 +279,10 @@ function MarkdownContent({ content }: { content: string }) {
         } else if (line.trim() === "" || line.match(/^[-*_]{3,}$/)) {
             // skip blank lines and horizontal rules
         } else if (line.trim()) {
-            elements.push(
-                <p key={key} className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed my-0.5">
-                    {parseInline(line)}
-                </p>
-            );
+            elements.push(<p key={key} className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed my-0.5">{parseInline(line)}</p>);
         }
     });
 
     flushList("list-final");
-
     return <div className="space-y-0.5">{elements}</div>;
 }

@@ -28,7 +28,7 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
             <div className="flex items-center gap-2" onClick={() => {
                 router.push('/');
             }}>
-                <div className="size-6 rounded bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center">
+                <div className="size-6 rounded bg-gradient-to-br from-accent-theme to-accent-theme-dark flex items-center justify-center">
                     <span className="text-[11px] font-bold text-white">S</span>
                 </div>
                 <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 tracking-tight">
@@ -55,7 +55,7 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
                 <Button
                     onClick={handleRandomNode}
                     size="sm"
-                    className="h-7 text-xs bg-violet-600/20 text-violet-600 dark:text-violet-300 border border-violet-600/40 hover:bg-violet-600/30 rounded-lg gap-1.5"
+                    className="h-7 text-xs bg-accent-theme/20 text-accent-theme dark:text-accent-theme-light border border-accent-theme/40 hover:bg-accent-theme/30 rounded-lg gap-1.5"
                     variant="ghost"
                 >
                     <Shuffle className="size-3" />
@@ -98,7 +98,7 @@ function TabButton({
         >
             {label}
             {active && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-violet-500" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-accent-theme-bright" />
             )}
         </button>
     );

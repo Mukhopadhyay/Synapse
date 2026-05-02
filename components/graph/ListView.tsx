@@ -19,7 +19,7 @@ export function ListView() {
                             transition={{ delay: i * 0.03 }}
                             onClick={() => setSelectedNode(selectedNode?.id === node.id ? null : node)}
                             className={`w-full text-left px-4 py-3 rounded-xl border transition-colors ${selectedNode?.id === node.id
-                                ? "bg-violet-600/15 border-violet-600/40 text-violet-700 dark:text-violet-200"
+                                ? "bg-accent-theme/15 border-accent-theme/40 text-accent-theme-dark dark:text-accent-theme-light"
                                 : "bg-white dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.06] text-zinc-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:border-gray-300 dark:hover:border-white/[0.1]"
                                 }`}
                         >
@@ -34,7 +34,7 @@ export function ListView() {
                                     {node.tags?.slice(0, 2).map((t) => (
                                         <span
                                             key={t}
-                                            className="px-1.5 py-0 text-[10px] rounded bg-violet-600/20 text-violet-600 dark:text-violet-300 border border-violet-600/30"
+                                            className="px-1.5 py-0 text-[10px] rounded bg-accent-theme/20 text-accent-theme dark:text-accent-theme-light border border-accent-theme/30"
                                         >
                                             {t}
                                         </span>

@@ -38,8 +38,8 @@ export function FloatingActionBar({
                         onClick={handlers[key]}
                         className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl hover:bg-white/[0.06] transition-colors group"
                     >
-                        <div className="size-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center group-hover:bg-violet-600/20 group-hover:border-violet-600/40 transition-colors">
-                            <Icon className="size-4 text-zinc-400 group-hover:text-violet-300 transition-colors" />
+                        <div className="size-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center group-hover:bg-accent-theme/20 group-hover:border-accent-theme/40 transition-colors">
+                            <Icon className="size-4 text-zinc-400 group-hover:text-accent-theme-light transition-colors" />
                         </div>
                         <span className="text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
                             {label}

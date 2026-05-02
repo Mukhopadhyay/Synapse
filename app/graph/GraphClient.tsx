@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { useSynapseStore } from "@/store";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { NodeInspector } from "@/components/inspector/NodeInspector";
+import { NodeDialog } from "@/components/inspector/NodeDialog";
 import { TopBar } from "@/components/ui/TopBar";
 import { ForceGraph } from "@/components/graph/ForceGraph";
 import { ListView } from "@/components/graph/ListView";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { GraphNode, GraphEdge } from "@/types";
 
 export function GraphClient() {
-    const { nodes, edges, setNodes, setEdges } = useSynapseStore();
+    const { nodes, edges, setNodes, setEdges, isInspectorFullscreen } = useSynapseStore();
     const [activeTab, setActiveTab] = useState<"graph" | "list">("graph");
     const [loading, setLoading] = useState(true);
+    const isMobile = useIsMobile();
 
     useEffect(() => {
         fetch("/api/graph")
@@ -24,6 +27,8 @@ export function GraphClient() {
             .finally(() => setLoading(false));
     }, [setNodes, setEdges]);
 
+    const useDialog = isMobile || isInspectorFullscreen;
+
     return (
         <div className="flex flex-col h-screen bg-gray-50 dark:bg-[#0c0c0e] text-zinc-900 dark:text-zinc-100 overflow-hidden">
             <TopBar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -33,20 +38,13 @@ export function GraphClient() {
 
                 {/* Main canvas */}
                 <main className="flex-1 relative overflow-hidden">
-                    {/* Dotted background */}
-                    <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            backgroundImage:
-                                "radial-gradient(circle, rgba(99,102,241,0.08) 1px, transparent 1px)",
-                            backgroundSize: "28px 28px",
-                        }}
-                    />
+                    {/* Theme-aware dotted background */}
+                    <div className="absolute inset-0 pointer-events-none graph-grid-bg" />
 
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
                             <div className="flex flex-col items-center gap-3">
-                                <div className="size-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+                                <div className="size-8 border-2 border-accent-theme border-t-transparent rounded-full animate-spin" />
                                 <span className="text-xs text-zinc-500">Loading graph…</span>
                             </div>
                         </div>
@@ -57,8 +55,8 @@ export function GraphClient() {
                     )}
                 </main>
 
-                {/* Right inspector panel (positioned absolutely inside the relative main) */}
-                <NodeInspector />
+                {/* Inspector: dialog on mobile/fullscreen, side panel on desktop */}
+                {useDialog ? <NodeDialog /> : <NodeInspector />}
             </div>
         </div>
     );

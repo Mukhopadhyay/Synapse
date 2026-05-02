@@ -46,6 +46,12 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Accent theme palette (change these to re-skin the whole app) ── */
+  --color-accent-theme: #dc2626;         /* red-600 */
+  --color-accent-theme-light: #f87171;   /* red-400 */
+  --color-accent-theme-dark: #b91c1c;    /* red-700 */
+  --color-accent-theme-bright: #ef4444;  /* red-500 */
 }
 
 :root {
@@ -132,13 +138,9 @@
 }
 
 /* Synapse custom overrides */
-:root {
-  --synapse-purple: oklch(0.55 0.22 280);
-}
-
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+  scrollbar-color: rgba(220, 38, 38, 0.2) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -150,6 +152,16 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(220, 38, 38, 0.2);
   border-radius: 999px;
+}
+
+/* Theme-aware dotted grid background for graph canvas */
+.graph-grid-bg {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.10) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .graph-grid-bg {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
 }

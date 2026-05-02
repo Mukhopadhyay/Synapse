@@ -32,8 +32,10 @@ export interface GraphNode extends NodeFrontmatter {
     index?: number;
 }
 
+export type EdgeType = "directed" | "bidirectional" | "depends" | "weak";
+
 export interface GraphEdge {
     source: string | GraphNode;
     target: string | GraphNode;
-    direction?: "unidirectional" | "bidirectional";
+    type: EdgeType;
 }
