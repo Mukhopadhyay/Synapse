@@ -32,7 +32,7 @@ export function Sidebar() {
     const [localQuery, setLocalQuery] = useState("");
     const [activeTag, setActiveTag] = useState<string | null>(null);
 
-    const fuse = new Fuse(nodes, { keys: ["title", "tags", "description"], threshold: 0.35 });
+    const fuse = new Fuse(nodes, { keys: ["title", "tags", "aliases", "description"], threshold: 0.35 });
 
     const handleSearch = (value: string) => {
         setLocalQuery(value);

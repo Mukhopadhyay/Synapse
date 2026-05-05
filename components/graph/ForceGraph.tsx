@@ -8,6 +8,8 @@ import type { GraphNode, GraphEdge, EdgeType } from "@/types";
 import { useSynapseStore } from "@/store";
 import { theme as t } from "@/lib/theme";
 import { NodeCard, type Importance, NODE_DIMS } from "./NodeCard";
+import { useGraphConfig } from "@/hooks/use-graph-config";
+import { GraphControls } from "./GraphControls";
 
 interface ForceGraphProps {
     nodes: GraphNode[];
@@ -18,7 +20,8 @@ interface ForceGraphProps {
 const HIGH_THRESHOLD = 4;
 const MEDIUM_THRESHOLD = 2;
 
-function getImportance(degree: number): Importance {
+function getImportance(node: GraphNode, degree: number): Importance {
+    if (node.important === true) return "high";
     if (degree >= HIGH_THRESHOLD) return "high";
     if (degree >= MEDIUM_THRESHOLD) return "medium";
     return "low";
@@ -55,6 +58,9 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
     const { selectedNode, setSelectedNode, highlightedNodes, searchQuery } =
         useSynapseStore();
     const { resolvedTheme } = useTheme();
+    const { config, setConfig, resetConfig } = useGraphConfig();
+    const configRef = useRef(config);
+    useEffect(() => { configRef.current = config; }, [config]);
 
     // ── Keep refs in sync with latest store state (for use inside D3 closures) ──
     useEffect(() => { selectedNodeRef.current = selectedNode; }, [selectedNode]);
@@ -218,8 +224,9 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
 
         const importanceMap = new Map<string, Importance>();
         simNodes.forEach((n) => {
-            importanceMap.set(n.id, getImportance(degreeMap.get(n.id) ?? 0));
-        }); importanceMapRef.current = importanceMap;
+            importanceMap.set(n.id, getImportance(n, degreeMap.get(n.id) ?? 0));
+        });
+        importanceMapRef.current = importanceMap;
         // ── Edge set for quick neighbor lookup ───────────────────────────────
         const neighborEdges = new Map<string, Set<number>>();
         simEdges.forEach((e, i) => {
@@ -232,12 +239,14 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
         });
 
         // ── Simulation ───────────────────────────────────────────────────────
+        const cfg = configRef.current;
         const simulation = d3
             .forceSimulation<GraphNode>(simNodes)
-            .force("link", d3.forceLink<GraphNode, GraphEdge>(simEdges).id((d) => d.id).distance(240).strength(0.6))
-            .force("charge", d3.forceManyBody().strength(-700))
+            .force("link", d3.forceLink<GraphNode, GraphEdge>(simEdges).id((d) => d.id).distance(cfg.linkDistance).strength(0.6))
+            .force("charge", d3.forceManyBody().strength(cfg.chargeStrength))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide(130));
+            .force("collide", d3.forceCollide(cfg.collideRadius))
+            .alphaDecay(cfg.alphaDecay);
         simulationRef.current = simulation;
 
         // ── Edges ────────────────────────────────────────────────────────────
@@ -505,6 +514,17 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodes, edges, resolvedTheme]);
 
+    // ── Reactive: update D3 forces in-place when config changes ──────────────
+    useEffect(() => {
+        const sim = simulationRef.current;
+        if (!sim) return;
+        (sim.force("link") as d3.ForceLink<GraphNode, GraphEdge> | null)?.distance(config.linkDistance);
+        (sim.force("charge") as d3.ForceManyBody<GraphNode> | null)?.strength(config.chargeStrength);
+        (sim.force("collide") as d3.ForceCollide<GraphNode> | null)?.radius(config.collideRadius);
+        sim.alphaDecay(config.alphaDecay);
+        sim.alpha(0.3).restart();
+    }, [config]);
+
     // ── Reactive: update NodeCard props when selection / highlight changes ─────
     useEffect(() => {
         if (!svgRef.current) return;
@@ -535,10 +555,13 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
     }, [selectedNode, highlightedNodes, searchQuery, resolvedTheme]);
 
     return (
-        <svg
-            ref={svgRef}
-            className="w-full h-full"
-            style={{ background: "transparent" }}
-        />
+        <div className="relative w-full h-full">
+            <svg
+                ref={svgRef}
+                className="w-full h-full"
+                style={{ background: "transparent" }}
+            />
+            <GraphControls config={config} onChange={setConfig} onReset={resetConfig} />
+        </div>
     );
 }

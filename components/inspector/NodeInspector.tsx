@@ -86,6 +86,8 @@ export function NodeInspectorContent() {
         .map((id) => nodes.find((n) => n.id === id))
         .filter(Boolean);
 
+    const tags = selectedNode.tags ?? [];
+
     return (
         <>
             <div className="w-full h-[140px] bg-gradient-to-br from-accent-theme-dark/40 via-accent-theme/30 to-zinc-900/80 flex items-center justify-center border-b border-gray-200 dark:border-white/[0.07] shrink-0">
@@ -100,9 +102,9 @@ export function NodeInspectorContent() {
                     <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{selectedNode.description}</p>
                 </div>
 
-                {selectedNode.tags?.length > 0 && (
+                {tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                        {selectedNode.tags.map((tag) => (
+                        {tags.map((tag) => (
                             <Badge key={tag} className="px-2 py-0.5 text-[10px] bg-accent-theme/20 text-accent-theme-light border border-accent-theme/30 rounded-full">{tag}</Badge>
                         ))}
                     </div>

@@ -1,24 +1,38 @@
+export interface NodeLink {
+    to: string;
+    type?: "uni" | "bi" | "depends";
+}
+
+export interface NodeContributor {
+    name: string;
+    github: string;
+}
+
 export interface NodeFrontmatter {
     id: string;
     title: string;
-    description: string;
-    tags: string[];
+    description?: string;
+    difficulty: number; // 1–5
+    tags?: string[];
+    aliases?: string[];
+    important?: boolean;
+    contributors: NodeContributor[];
+    links: NodeLink[];
+    content?: string;
+    // Legacy optional fields kept for compatibility
+    createdAt?: string;
+    updatedAt?: string;
+    connections?: string[];
     direction?: {
         type?: "unidirectional" | "bidirectional";
         incoming?: string[];
         outgoing?: string[];
     } | string;
-    difficulty?: number; // 1–5
-    createdAt: string;
-    updatedAt: string;
-    contributors?: { name: string; github: string }[];
     metadata?: {
         type?: string;
         complexity?: number;
         imageUrl?: string;
     };
-    connections: string[];
-    content?: string;
 }
 
 export interface GraphNode extends NodeFrontmatter {

@@ -31,10 +31,7 @@ export function NodeCard({
     isHovered,
     isDark,
 }: NodeCardProps) {
-    const tags = node.tags?.slice(
-        0,
-        importance === "high" ? 3 : importance === "medium" ? 2 : 0,
-    ) ?? [];
+    const tags = node.tags?.slice(0, 3) ?? [];
 
     const active = isSelected;
 
@@ -85,12 +82,7 @@ export function NodeCard({
                 "transition-[border-color,box-shadow] duration-150",
             )}
         >
-            {/* Category label — high importance only */}
-            {importance === "high" && (
-                <span className="absolute top-1.5 left-0 right-0 text-center text-[9px] text-zinc-500/80 dark:text-zinc-400/80 uppercase tracking-[0.5px] [font-family:inherit]">
-                    {node.metadata?.type?.split(".")[0] ?? ""}
-                </span>
-            )}
+
 
             {/* Title */}
             <span
