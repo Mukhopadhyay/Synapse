@@ -3,9 +3,11 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTheme } from "next-themes";
 import * as d3 from "d3";
+import { createRoot, type Root } from "react-dom/client";
 import type { GraphNode, GraphEdge, EdgeType } from "@/types";
 import { useSynapseStore } from "@/store";
 import { theme as t } from "@/lib/theme";
+import { NodeCard, type Importance, NODE_DIMS } from "./NodeCard";
 
 interface ForceGraphProps {
     nodes: GraphNode[];
@@ -16,37 +18,10 @@ interface ForceGraphProps {
 const HIGH_THRESHOLD = 4;
 const MEDIUM_THRESHOLD = 2;
 
-type Importance = "high" | "medium" | "low";
-
 function getImportance(degree: number): Importance {
     if (degree >= HIGH_THRESHOLD) return "high";
     if (degree >= MEDIUM_THRESHOLD) return "medium";
     return "low";
-}
-
-// ── Node dimensions by importance ─────────────────────────────────────────────
-const CORNER_RADIUS = 12;
-
-function getNodeDims(importance: Importance) {
-    switch (importance) {
-        case "high":
-            return { w: 190, h: 84 };
-        case "medium":
-            return { w: 160, h: 68 };
-        case "low":
-            return { w: 130, h: 48 };
-    }
-}
-
-function getTitleFontSize(importance: Importance) {
-    switch (importance) {
-        case "high":
-            return "15px";
-        case "medium":
-            return "13px";
-        case "low":
-            return "11px";
-    }
 }
 
 // ── Edge style helpers ────────────────────────────────────────────────────────
@@ -72,9 +47,19 @@ function edgeOpacity(type: EdgeType): number {
 export function ForceGraph({ nodes, edges }: ForceGraphProps) {
     const svgRef = useRef<SVGSVGElement>(null);
     const simulationRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
+    const rootsRef = useRef<Map<string, Root>>(new Map());
+    const importanceMapRef = useRef<Map<string, Importance>>(new Map());
+    const selectedNodeRef = useRef<GraphNode | null>(null);
+    const highlightedNodesRef = useRef<string[]>([]);
+    const isDarkRef = useRef<boolean>(false);
     const { selectedNode, setSelectedNode, highlightedNodes, searchQuery } =
         useSynapseStore();
     const { resolvedTheme } = useTheme();
+
+    // ── Keep refs in sync with latest store state (for use inside D3 closures) ──
+    useEffect(() => { selectedNodeRef.current = selectedNode; }, [selectedNode]);
+    useEffect(() => { highlightedNodesRef.current = highlightedNodes; }, [highlightedNodes]);
+    useEffect(() => { isDarkRef.current = resolvedTheme === "dark"; }, [resolvedTheme]);
 
     const handleNodeClick = useCallback(
         (node: GraphNode) => {
@@ -234,8 +219,7 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
         const importanceMap = new Map<string, Importance>();
         simNodes.forEach((n) => {
             importanceMap.set(n.id, getImportance(degreeMap.get(n.id) ?? 0));
-        });
-
+        }); importanceMapRef.current = importanceMap;
         // ── Edge set for quick neighbor lookup ───────────────────────────────
         const neighborEdges = new Map<string, Set<number>>();
         simEdges.forEach((e, i) => {
@@ -356,16 +340,19 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
             )
             .on("click", (_event, d) => handleNodeClick(d))
             .on("mouseover", function (_, d) {
-                const imp = importanceMap.get(d.id) ?? "low";
-                const { w, h } = getNodeDims(imp);
-
-                // Scale up the hovered node
-                d3.select(this).select("rect")
-                    .attr("filter", "url(#node-glow)")
-                    .attr("stroke", isDark ? t.accentBright : t.accent)
-                    .attr("stroke-width", 2)
-                    .attr("x", -w / 2 - 2).attr("y", -h / 2 - 2)
-                    .attr("width", w + 4).attr("height", h + 4);
+                // Re-render NodeCard with hover state
+                const imp = importanceMapRef.current.get(d.id) ?? "low";
+                const root = rootsRef.current.get(d.id);
+                root?.render(
+                    <NodeCard
+                        node={d}
+                        importance={imp}
+                        isSelected={selectedNodeRef.current?.id === d.id}
+                        isHighlighted={highlightedNodesRef.current.includes(d.id)}
+                        isHovered={true}
+                        isDark={isDarkRef.current}
+                    />
+                );
 
                 // Highlight connected edges, dim others
                 const connectedEdgeIndices = neighborEdges.get(d.id) ?? new Set();
@@ -381,16 +368,19 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
                 });
             })
             .on("mouseout", function (_, d) {
-                const isSelected = selectedNode?.id === d.id;
-                const imp = importanceMap.get(d.id) ?? "low";
-                const { w, h } = getNodeDims(imp);
-
-                d3.select(this).select("rect")
-                    .attr("filter", isSelected ? "url(#node-glow)" : (imp === "high" ? "url(#node-shadow)" : "none"))
-                    .attr("stroke", isSelected ? (isDark ? t.accentBright : t.accent) : colors.nodeBorder)
-                    .attr("stroke-width", isSelected ? 2.5 : (imp === "high" ? 1.8 : 1.5))
-                    .attr("x", -w / 2).attr("y", -h / 2)
-                    .attr("width", w).attr("height", h);
+                // Restore NodeCard to non-hover state
+                const imp = importanceMapRef.current.get(d.id) ?? "low";
+                const root = rootsRef.current.get(d.id);
+                root?.render(
+                    <NodeCard
+                        node={d}
+                        importance={imp}
+                        isSelected={selectedNodeRef.current?.id === d.id}
+                        isHighlighted={highlightedNodesRef.current.includes(d.id)}
+                        isHovered={false}
+                        isDark={isDarkRef.current}
+                    />
+                );
 
                 // Restore edge styles
                 link.each(function (ed) {
@@ -402,113 +392,95 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
                 });
             });
 
-        // Card background (variable size based on importance)
-        nodeGroup.append("rect")
-            .attr("x", (d) => -getNodeDims(importanceMap.get(d.id) ?? "low").w / 2)
-            .attr("y", (d) => -getNodeDims(importanceMap.get(d.id) ?? "low").h / 2)
-            .attr("width", (d) => getNodeDims(importanceMap.get(d.id) ?? "low").w)
-            .attr("height", (d) => getNodeDims(importanceMap.get(d.id) ?? "low").h)
-            .attr("rx", CORNER_RADIUS)
-            .attr("fill", colors.nodeBg)
-            .attr("stroke", (d) => {
-                const imp = importanceMap.get(d.id) ?? "low";
-                if (imp === "high") return isDark ? `${t.accentBright}40` : `${t.accent}30`;
-                return colors.nodeBorder;
-            })
-            .attr("stroke-width", (d) => {
-                const imp = importanceMap.get(d.id) ?? "low";
-                return imp === "high" ? 1.8 : 1.5;
-            })
-            .attr("filter", (d) => {
-                const imp = importanceMap.get(d.id) ?? "low";
-                return imp === "high" ? "url(#node-shadow)" : "none";
-            });
-
-        // Category label (high importance only)
-        nodeGroup
-            .filter((d) => (importanceMap.get(d.id) ?? "low") === "high")
-            .append("text")
-            .attr("y", (d) => -getNodeDims("high").h / 2 + 15)
-            .attr("text-anchor", "middle")
-            .attr("font-size", "9px")
-            .attr("fill", colors.nodeSubText)
-            .attr("font-family", "inherit")
-            .attr("letter-spacing", "0.5px")
-            .text((d) => d.metadata?.type?.split(".")[0]?.toUpperCase() ?? "");
-
-        // Title (all nodes)
-        nodeGroup.append("text")
-            .attr("y", (d) => {
-                const imp = importanceMap.get(d.id) ?? "low";
-                if (imp === "high") return 2;
-                if (imp === "medium") return 0;
-                return 1;
-            })
-            .attr("text-anchor", "middle")
-            .attr("font-size", (d) => getTitleFontSize(importanceMap.get(d.id) ?? "low"))
-            .attr("font-weight", (d) => {
-                const imp = importanceMap.get(d.id) ?? "low";
-                return imp === "high" ? "700" : imp === "medium" ? "600" : "500";
-            })
-            .attr("fill", colors.nodeText)
-            .attr("font-family", "inherit")
-            .text((d) => d.title);
-
-        // Tags row (high and medium importance only)
+        // ── React NodeCard rendered into each node via foreignObject ─────────────────
         nodeGroup.each(function (d) {
+            const g = d3.select<SVGGElement, GraphNode>(this);
             const imp = importanceMap.get(d.id) ?? "low";
-            if (imp === "low") return; // No tags for low importance
+            const { w, h } = NODE_DIMS[imp];
 
-            const g = d3.select(this);
-            const { h } = getNodeDims(imp);
-            const TAG_Y = h / 2 - 12;
-            const tags = d.tags?.slice(0, imp === "high" ? 3 : 2) ?? [];
-            const tagWidth = 42;
-            const gap = 5;
-            const totalWidth = tags.length * tagWidth + (tags.length - 1) * gap;
-            let startX = -totalWidth / 2;
-            tags.forEach((tag) => {
-                g.append("rect")
-                    .attr("x", startX).attr("y", TAG_Y - 8)
-                    .attr("width", tagWidth).attr("height", 13)
-                    .attr("rx", 3)
-                    .attr("fill", colors.tagBg).attr("stroke", colors.tagBorder).attr("stroke-width", 0.8);
-                g.append("text")
-                    .attr("x", startX + tagWidth / 2).attr("y", TAG_Y)
-                    .attr("text-anchor", "middle")
-                    .attr("font-size", "8px").attr("fill", colors.tagText).attr("font-family", "inherit")
-                    .text(tag.length > 6 ? tag.slice(0, 5) + "…" : tag);
-                startX += tagWidth + gap;
-            });
+            // Visual layer — pointer-events disabled so SVG hit rect below handles interactions
+            const fo = g.append("foreignObject")
+                .attr("width", w)
+                .attr("height", h)
+                .attr("x", -w / 2)
+                .attr("y", -h / 2)
+                .style("pointer-events", "none");
+
+            const div = document.createElement("div");
+            div.style.width = `${w}px`;
+            div.style.height = `${h}px`;
+            div.style.pointerEvents = "none";
+            (fo.node() as SVGForeignObjectElement).appendChild(div);
+
+            const root = createRoot(div);
+            rootsRef.current.set(d.id, root);
+            root.render(
+                <NodeCard
+                    node={d}
+                    importance={imp}
+                    isSelected={selectedNodeRef.current?.id === d.id}
+                    isHighlighted={highlightedNodesRef.current.includes(d.id)}
+                    isHovered={false}
+                    isDark={isDark}
+                />
+            );
+
+            // Transparent hit area on top — receives all D3 pointer events (drag, click, hover)
+            g.append("rect")
+                .attr("x", -w / 2)
+                .attr("y", -h / 2)
+                .attr("width", w)
+                .attr("height", h)
+                .attr("rx", 12)
+                .attr("fill", "transparent")
+                .style("pointer-events", "all");
         });
 
         // ── Tick ─────────────────────────────────────────────────────────────
         simulation.on("tick", () => {
             link
-                .attr("x1", (d) => (d.source as GraphNode).x ?? 0)
-                .attr("y1", (d) => (d.source as GraphNode).y ?? 0)
+                .attr("x1", (d) => {
+                    const sx = (d.source as GraphNode).x ?? 0;
+                    const tx = (d.target as GraphNode).x ?? 0;
+                    const sy = (d.source as GraphNode).y ?? 0;
+                    const ty = (d.target as GraphNode).y ?? 0;
+                    const dx = tx - sx, dy = ty - sy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist === 0) return sx;
+                    const { w } = NODE_DIMS[importanceMap.get(((d.source as GraphNode).id ?? d.source) as string) ?? "low"];
+                    return sx + (dx / dist) * (w / 2 + 6);
+                })
+                .attr("y1", (d) => {
+                    const sx = (d.source as GraphNode).x ?? 0;
+                    const tx = (d.target as GraphNode).x ?? 0;
+                    const sy = (d.source as GraphNode).y ?? 0;
+                    const ty = (d.target as GraphNode).y ?? 0;
+                    const dx = tx - sx, dy = ty - sy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist === 0) return sy;
+                    const { h } = NODE_DIMS[importanceMap.get(((d.source as GraphNode).id ?? d.source) as string) ?? "low"];
+                    return sy + (dy / dist) * (h / 2 + 6);
+                })
                 .attr("x2", (d) => {
                     const sx = (d.source as GraphNode).x ?? 0;
                     const tx = (d.target as GraphNode).x ?? 0;
                     const sy = (d.source as GraphNode).y ?? 0;
                     const ty = (d.target as GraphNode).y ?? 0;
-                    if (d.type === "depends") return tx; // no offset needed — no arrowhead
                     const dx = tx - sx, dy = ty - sy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist === 0) return tx;
-                    const { w } = getNodeDims(importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low");
+                    const { w } = NODE_DIMS[importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low"];
                     return tx - (dx / dist) * (w / 2 + 6);
                 })
                 .attr("y2", (d) => {
-                    const sy = (d.source as GraphNode).y ?? 0;
-                    const ty = (d.target as GraphNode).y ?? 0;
                     const sx = (d.source as GraphNode).x ?? 0;
                     const tx = (d.target as GraphNode).x ?? 0;
-                    if (d.type === "depends") return ty;
+                    const sy = (d.source as GraphNode).y ?? 0;
+                    const ty = (d.target as GraphNode).y ?? 0;
                     const dx = tx - sx, dy = ty - sy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist === 0) return ty;
-                    const { h } = getNodeDims(importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low");
+                    const { h } = NODE_DIMS[importanceMap.get(((d.target as GraphNode).id ?? d.target) as string) ?? "low"];
                     return ty - (dy / dist) * (h / 2 + 6);
                 });
 
@@ -525,33 +497,40 @@ export function ForceGraph({ nodes, edges }: ForceGraphProps) {
                 .attr("width", 68).attr("height", 14);
         });
 
-        return () => { simulation.stop(); };
+        return () => {
+            simulation.stop();
+            rootsRef.current.forEach((root) => root.unmount());
+            rootsRef.current.clear();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodes, edges, resolvedTheme]);
 
-    // ── Reactive: update selection / highlight styles ─────────────────────
+    // ── Reactive: update NodeCard props when selection / highlight changes ─────
     useEffect(() => {
         if (!svgRef.current) return;
         const svg = d3.select(svgRef.current);
-        const isDark = resolvedTheme === "dark";
+        const currentIsDark = resolvedTheme === "dark";
         const isSearching = searchQuery.trim().length > 0;
 
         svg.selectAll<SVGGElement, GraphNode>(".node-group").each(function (d) {
-            const g = d3.select(this);
             const isSelected = selectedNode?.id === d.id;
             const isHighlighted = highlightedNodes.includes(d.id);
             const dimmed = isSearching && !isHighlighted;
 
-            g.select("rect")
-                .attr("stroke", isSelected
-                    ? (isDark ? t.accentBright : t.accent)
-                    : isHighlighted
-                        ? (isDark ? `${t.accentBright}b3` : `${t.accent}b3`)
-                        : (isDark ? "rgba(63,63,70,0.8)" : "rgba(200,200,210,0.9)"))
-                .attr("stroke-width", isSelected ? 2.5 : isHighlighted ? 1.8 : 1.5)
-                .attr("filter", isSelected || isHighlighted ? "url(#node-glow)" : "none");
+            d3.select(this).style("opacity", dimmed ? 0.2 : 1);
 
-            g.style("opacity", dimmed ? 0.2 : 1);
+            const root = rootsRef.current.get(d.id);
+            const imp = importanceMapRef.current.get(d.id) ?? "low";
+            root?.render(
+                <NodeCard
+                    node={d}
+                    importance={imp}
+                    isSelected={isSelected}
+                    isHighlighted={isHighlighted}
+                    isHovered={false}
+                    isDark={currentIsDark}
+                />
+            );
         });
     }, [selectedNode, highlightedNodes, searchQuery, resolvedTheme]);
 

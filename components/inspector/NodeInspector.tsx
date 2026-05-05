@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { X, Pin, ExternalLink, Maximize2, Minimize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSynapseStore } from "@/store";
@@ -14,14 +15,33 @@ export function NodeInspector() {
         pinnedNodes, isInspectorFullscreen, setInspectorFullscreen,
     } = useSynapseStore();
 
+    const panelRef = useRef<HTMLElement>(null);
     const isPinned = selectedNode ? pinnedNodes.includes(selectedNode.id) : false;
+
+    // Dismiss the inspector when clicking outside the panel.
+    // Clicks originating from a node card (.node-group) are excluded so that
+    // selecting a different node switches the inspector rather than flickering.
+    useEffect(() => {
+        if (!selectedNode) return;
+
+        function handleMouseDown(e: MouseEvent) {
+            const target = e.target as Element | null;
+            if (!target) return;
+            if (target.closest?.(".node-group")) return;
+            if (panelRef.current?.contains(target)) return;
+            setSelectedNode(null);
+        }
+
+        document.addEventListener("mousedown", handleMouseDown);
+        return () => document.removeEventListener("mousedown", handleMouseDown);
+    }, [selectedNode, setSelectedNode]);
 
     const panelWidth = "min(45vw, 480px)";
 
     return (
         <AnimatePresence>
             {selectedNode && (
-                <motion.aside key="inspector"
+                <motion.aside key="inspector" ref={panelRef}
                     initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     style={{ width: panelWidth }}

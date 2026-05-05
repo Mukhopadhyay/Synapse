@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Synapse
 
-## Getting Started
+A knowledge graph explorer for interconnected concepts. Nodes are authored as MDX files; the graph, edges, and visual importance are all derived automatically from the frontmatter.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Content authoring
+
+All nodes live in `content/nodes/`. Each file is an `.mdx` file with a YAML frontmatter block followed by optional Markdown/MDX body content.
+
+### Frontmatter reference
+
+```yaml
+---
+# ── Required ─────────────────────────────────────────────────────────────────
+id: my-node-id          # Unique slug. Must match the filename (kebab-case).
+title: My Node          # Display name shown on the graph card.
+description: "…"        # Short summary shown in the inspector panel.
+createdAt: 2024-01-01   # ISO date string.
+updatedAt: 2024-01-02   # ISO date string.
+connections:            # IDs of directly connected nodes. Drives edge generation.
+  - other-node-id
+
+# ── Recommended ───────────────────────────────────────────────────────────────
+tags:
+  - nlp                 # Shown on the graph card (up to 3 for high-importance nodes).
+difficulty: 3           # Integer 1–5. Influences edge type derivation.
+
+# ── Direction ─────────────────────────────────────────────────────────────────
+direction:
+  type: bidirectional   # "unidirectional" | "bidirectional"
+  incoming:             # Informational — IDs that point to this node.
+    - other-node-id
+  outgoing:             # Informational — IDs this node points to.
+    - another-node-id
+
+# ── Metadata ──────────────────────────────────────────────────────────────────
+metadata:
+  type: concept.core    # Dot-separated category. The first segment is shown on high-importance cards.
+                        # Use "dependency" anywhere in the type to force a "depends" edge style.
+  complexity: 3         # Integer 1–5. Used together with difficulty for edge type.
+  imageUrl: /images/x.jpg  # Optional hero image (unused in current UI).
+
+# ── Contributors ──────────────────────────────────────────────────────────────
+contributors:
+  - name: Jane Smith
+    github: janesmith
+---
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Body content
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Everything after the `---` closing fence is rendered as Markdown in the inspector panel. Standard Markdown syntax is supported, including fenced code blocks.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## How graph nodes and edges are generated
 
-To learn more about Next.js, take a look at the following resources:
+### Node importance (card size)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Node visual size is determined at render time by the node's **degree** (number of connected edges):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Degree | Importance | Card size |
+|--------|-----------|-----------|
+| ≥ 4    | `high`    | 190 × 84 px — shows category label + up to 3 tags |
+| ≥ 2    | `medium`  | 160 × 68 px — shows up to 2 tags |
+| < 2    | `low`     | 130 × 48 px — title only |
 
-## Deploy on Vercel
+### Edge type derivation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Edge types are derived automatically from the frontmatter of both connected nodes (see `lib/graph/builder.ts`):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Condition | Edge type |
+|-----------|-----------|
+| Either node sets `direction.type: bidirectional`, **or** both nodes list each other in `connections` | `bidirectional` — arrow on both ends |
+| Either node's `metadata.type` contains the word `dependency` | `depends` — dashed line, no arrows |
+| Both nodes have `metadata.complexity` (or `difficulty`) ≤ 1 | `weak` — faint line |
+| Default | `directed` — single arrowhead |
+
+### Adding a new node
+
+1. Create `content/nodes/my-topic.mdx` with the frontmatter above.
+2. Add the new node's `id` to the `connections` list of any related existing nodes.
+3. The graph API route (`app/api/graph/route.ts`) picks up all `.mdx` files automatically on the next request — no config changes needed.
+
+---
+
+## Project structure
+
+```
+content/nodes/      MDX source files (one per graph node)
+app/api/graph/      API route that parses MDX and builds the graph payload
+lib/graph/          Edge derivation logic (builder.ts)
+lib/mdx/            Frontmatter + body parser (parser.ts)
+components/graph/   ForceGraph renderer, NodeCard, ListView
+components/inspector/ Node detail panel
+store/              Zustand store (selected node, search, highlights)
+types/              Shared TypeScript interfaces
+```
