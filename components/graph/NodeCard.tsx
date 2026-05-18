@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 export type Importance = "high" | "medium" | "low";
 
 export const NODE_DIMS: Record<Importance, { w: number; h: number }> = {
-    high: { w: 190, h: 84 },
-    medium: { w: 160, h: 68 },
-    low: { w: 130, h: 48 },
+    high: { w: 170, h: 84 },
+    medium: { w: 140, h: 68 },
+    low: { w: 100, h: 48 },
 };
 
-const CORNER_RADIUS = 12;
+const CORNER_RADIUS = 8;
 
 export interface NodeCardProps {
     node: GraphNode;
@@ -69,7 +69,7 @@ export function NodeCard({
     return (
         <div
             style={{
-                borderRadius: CORNER_RADIUS,
+                // borderRadius: CORNER_RADIUS,
                 borderColor,
                 borderWidth,
                 boxShadow,
@@ -88,9 +88,9 @@ export function NodeCard({
             <span
                 className={cn(
                     "px-2 leading-[1.25] max-w-full [font-family:inherit]",
-                    "text-zinc-800 dark:text-zinc-100",
+                    "text-white-800 dark:text-zinc-100",
                     importance === "high"
-                        ? "text-[15px] font-bold mt-2"
+                        ? "text-[16px] font-bold mt-2"
                         : importance === "medium"
                             ? "text-[13px] font-semibold"
                             : "text-[11px] font-medium",

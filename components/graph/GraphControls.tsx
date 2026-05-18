@@ -15,7 +15,7 @@ export function GraphControls({ config, onChange, onReset }: GraphControlsProps)
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="absolute bottom-4 right-4 z-10 flex flex-col items-end gap-2 pointer-events-none">
+        <div className="fixed md:absolute bottom-4 right-4 z-[60] flex flex-col items-end gap-2 pointer-events-none">
             {open && (
                 <div className="pointer-events-auto bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-4 w-64 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-3">

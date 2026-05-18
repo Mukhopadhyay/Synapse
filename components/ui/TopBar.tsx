@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Moon, Sun, Shuffle } from "lucide-react";
+import { Moon, Sun, Shuffle, Dices } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSynapseStore } from "@/store";
 import { useRouter } from "next/navigation";
@@ -54,12 +54,12 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
             <div className="flex items-center gap-2">
                 <Button
                     onClick={handleRandomNode}
-                    size="sm"
+                    size="icon"
                     className="h-7 text-xs bg-accent-theme/20 text-accent-theme dark:text-accent-theme-light border border-accent-theme/40 hover:bg-accent-theme/30 rounded-lg gap-1.5"
                     variant="ghost"
                 >
-                    <Shuffle className="size-3" />
-                    Random Node
+                    <Dices className="size-3" />
+                    {/* Random Node */}
                 </Button>
 
                 <Button
